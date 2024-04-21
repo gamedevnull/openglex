@@ -19,7 +19,7 @@ public:
     float angle;
     float velX, velY;
     float forX, forY;
-    float throttle;
+    float throttle, rotationThrottle;
     float mass;
     char status;
     char ObjectId;
@@ -41,6 +41,9 @@ public:
 
     GameObject *ship;
     GameObject *bullet;
+    std::vector<GameObject *> targets;
+
+    int score;
 
     SpaceGame()
     {
@@ -58,9 +61,53 @@ public:
         ship->velY = 0.0f;
         ship->mass = 1.0f;
         ship->throttle = 0;
+        ship->rotationThrottle = 0;
 
         bullet = new GameObject(2);
         bullet->status = 0;
+
+        spawnAsteroid();
+
+        score = 0;
+    }
+
+    void spawnAsteroid()
+    {
+        GameObject *asteroid;
+        asteroid = new GameObject(3);
+        asteroid->status = 1;
+        asteroid->posX = (float)(rand() % 800);
+        asteroid->posY = (float)(rand() % 600);
+        asteroid->velX = ((float)(rand() % 300)) / 100.0f;
+        asteroid->velY = ((float)(rand() % 300)) / 100.0f;
+        targets.push_back(asteroid);
+    }
+
+    void spawnMoreAsteroids()
+    {
+        int currentAsteroidsCount = targets.size();
+        int maxAsteroidsCount = 1;
+        if (score <= 2)
+        {
+            maxAsteroidsCount = 1;
+        }
+        else if (score > 2 and score <= 4)
+        {
+            maxAsteroidsCount = 2;
+        }
+        else if (score > 4 and score <= 6)
+        {
+            maxAsteroidsCount = 4;
+        }
+        else
+        {
+            maxAsteroidsCount = 6;
+        }
+        std::cout << "spawning" << maxAsteroidsCount << std::endl;
+        for (int i = currentAsteroidsCount; i < maxAsteroidsCount; i++)
+        {
+            spawnAsteroid();
+        }
     }
 
     void run()
@@ -199,16 +246,19 @@ public:
     void Update()
     {
         static const float forceFactor = 0.02f;
-        static const float maxThrottle = 5.0f;
+        static const float maxMainThrottle = 5.0f;
+        static const float maxRotationThrottle = 3.0f;
 
         ship->forX = 0;
         ship->forY = 0;
+
+        // move forward
 
         if (input.keyUp)
         {
             debugMsg("Up");
 
-            if (ship->throttle < maxThrottle)
+            if (ship->throttle < maxMainThrottle)
             {
                 ship->throttle += 0.5;
             }
@@ -217,27 +267,29 @@ public:
             ship->forY += ship->throttle * sin(deg2rad(ship->angle));
         }
 
+        // change angle
+
         if (input.keyLeft)
         {
             debugMsg("Left");
 
-            if (ship->throttle < maxThrottle)
+            if (ship->rotationThrottle < maxRotationThrottle)
             {
-                ship->throttle += 0.5;
+                ship->rotationThrottle += 0.05;
             }
 
-            ship->angle += ship->throttle;
+            ship->angle += ship->rotationThrottle;
         }
         else if (input.keyRight)
         {
             debugMsg("Right");
 
-            if (ship->throttle < maxThrottle)
+            if (ship->rotationThrottle < maxRotationThrottle)
             {
-                ship->throttle += 0.5;
+                ship->rotationThrottle += 0.05;
             }
 
-            ship->angle -= ship->throttle;
+            ship->angle -= ship->rotationThrottle;
         }
         else
         {
@@ -249,24 +301,67 @@ public:
                     ship->throttle = 0;
                 }
             }
+
+            if (ship->rotationThrottle > 0)
+            {
+                ship->rotationThrottle -= 0.1;
+                if (ship->rotationThrottle < 0)
+                {
+                    ship->rotationThrottle = 0;
+                }
+            }
         }
 
         ship->velX += ship->forX * forceFactor / ship->mass;
+
+        if (ship->velX > 3)
+        {
+            ship->velX = 3;
+        }
+        else if (ship->velX < -3)
+        {
+            ship->velX = -3;
+        }
+
         ship->velY += ship->forY * forceFactor / ship->mass;
+
+        if (ship->velY > 3)
+        {
+            ship->velY = 3;
+        }
+        else if (ship->velY < -3)
+        {
+            ship->velY = -3;
+        }
 
         ship->posX += ship->velX;
         ship->posY += ship->velY;
 
+        // shot
+
         if (input.keySpace)
         {
-            shootBullet();
+            shotBullet();
             input.keySpace = 0;
         }
+
+        // move bullet
 
         if (bullet->status)
         {
             bullet->posX += bullet->velX;
             bullet->posY += bullet->velY;
+        }
+
+        // move targets
+
+        for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+        {
+            if ((*it)->status)
+            {
+                (*it)->posX += (*it)->velX;
+                (*it)->posY += (*it)->velY;
+            }
         }
 
         // bullet out of screen
@@ -301,9 +396,69 @@ public:
             ship->posY += 2 * (20.0f - ship->posY);
             ship->velY = -ship->velY;
         }
+
+        // targets out of screen
+
+        for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+        {
+            if ((*it)->status)
+            {
+                if ((*it)->posX > 780.0f)
+                {
+                    (*it)->posX += 2 * (780.0f - (*it)->posX);
+                    (*it)->velX = -(*it)->velX;
+                }
+                if ((*it)->posX < 20.0f)
+                {
+                    (*it)->posX += 2 * (20.0f - (*it)->posX);
+                    (*it)->velX = -(*it)->velX;
+                }
+                if ((*it)->posY > 580.0f)
+                {
+                    (*it)->posY += 2 * (580.0f - (*it)->posY);
+                    (*it)->velY = -(*it)->velY;
+                }
+                if ((*it)->posY < 20.0f)
+                {
+                    (*it)->posY += 2 * (20.0f - (*it)->posY);
+                    (*it)->velY = -(*it)->velY;
+                }
+            }
+        }
+
+        if (bullet->status)
+        {
+            for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+            {
+                if ((*it)->status)
+                {
+                    if ((bullet->posX < (*it)->posX + 20.0f) &&
+                        (bullet->posX > (*it)->posX - 20.0f) &&
+                        (bullet->posY < (*it)->posY + 20.0f) &&
+                        (bullet->posY > (*it)->posY - 20.0f))
+                    {
+                        bullet->status = 0;
+                        (*it)->status = 0;
+                        score++;
+                        debugMsg("score!");
+                    }
+                }
+            }
+        }
+
+        for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+        {
+            if (!(*it)->status)
+            {
+                delete *it;
+                targets.erase(it);
+                spawnMoreAsteroids();
+                break;
+            }
+        }
     }
 
-    void shootBullet()
+    void shotBullet()
     {
         if (!bullet->status)
         {
@@ -332,6 +487,8 @@ public:
 
         renderShip();
 
+        renderAsteroids();
+
         SDL_GL_SwapWindow(window);
     }
 
@@ -355,6 +512,38 @@ public:
             glPopMatrix();
         }
     }
+
+    void renderAsteroids()
+    {
+
+        for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+        {
+            if ((*it)->status)
+            {
+                glPushMatrix();
+
+                glTranslatef((*it)->posX, (*it)->posY, 0.0f);
+                glRotatef((*it)->angle, 0.0f, 0.0f, 1.0f);
+                glColor3f(0.0f, 1.0f, 1.0f);
+
+                float rockSize = 12.0f;
+
+                glBegin(GL_TRIANGLE_STRIP);
+                {
+                    // asteroid body
+                    glVertex2f(0.0f - rockSize, 0.0f - rockSize);
+                    glVertex2f(0.0f + rockSize, 0.0f - rockSize);
+                    glVertex2f(0.0f + rockSize, 0.0f + rockSize);
+                    glVertex2f(0.0f - rockSize, 0.0f + rockSize);
+                    glVertex2f(0.0f - rockSize, 0.0f - rockSize);
+                }
+                glEnd();
+
+                glPopMatrix();
+            }
+        }
+    }
+
     void renderShip()
     {
         glPushMatrix();
@@ -364,8 +553,8 @@ public:
 
         if (input.keyUp)
         {
+            // spaceship throttle
             glColor3f(1.0f, 0.0f, 0.0f);
-
             glBegin(GL_LINES);
             {
                 glVertex2f(0.0f, 0.0f);
