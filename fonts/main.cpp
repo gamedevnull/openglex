@@ -12,14 +12,13 @@ public:
     bool isRunning;
     SDL_Window *window;
     SDL_GLContext context;
-    GLuint fontTexture;
+    GLuint fontTextures[95]; // ASCII printable characters as textures
 
     FontApp()
     {
         isRunning = 0;
         window = nullptr;
         context = nullptr;
-        fontTexture = 0;
     }
 
     void run()
@@ -30,7 +29,7 @@ public:
             return;
         }
 
-        window = SDL_CreateWindow("Text demo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        window = SDL_CreateWindow("OpenGl text demo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
         if (!window)
         {
             std::cout << "SDL window create problem" << std::endl;
@@ -50,7 +49,9 @@ public:
             return;
         }
 
-        fontTexture = loadTexture("pixfont.png"); // https://opengameart.org/content/16x12-terminal-bitmap-font
+        /* 12x16 in 192x96 png with white ascii letters on black color as transparent
+           https://opengameart.org/content/16x12-terminal-bitmap-font */
+        createPrintableAsciiCharsTexturesFromPng("pixfont.png", 12, 16, 192, 96);
 
         isRunning = 1;
         while (isRunning)
@@ -62,27 +63,60 @@ public:
         }
     }
 
-    GLuint loadTexture(const char *filename)
+    GLuint createTextureFromSurface(SDL_Surface *surface)
+    {
+        GLuint textureID;
+        glGenTextures(1, &textureID);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        return textureID;
+    }
+
+    void createPrintableAsciiCharsTexturesFromPng(const char *filename, int symW, int symH, int srcW, int srcH)
     {
         SDL_Surface *surface = IMG_Load(filename);
 
-        SDL_Surface *newSurface = SDL_CreateRGBSurfaceWithFormat(0, surface->w, surface->h, 32, SDL_PIXELFORMAT_RGBA32);
-        if (!newSurface)
+        int offX = 0;
+        int offY = 0;
+
+        SDL_Surface *newSurface;
+        newSurface = nullptr;
+
+        GLuint textureID = 0;
+        for (int i = 0; i < 95; ++i)
         {
-            std::cerr << "Ccreate new surface problem" << std::endl;
-            SDL_FreeSurface(surface);
-            return 0;
+            newSurface = getPartOfSurfaceAsNewSurface(surface, symW, symH, offX, offY, srcW, srcH);
+            textureID = createTextureFromSurface(newSurface);
+            fontTextures[i] = textureID;
+            SDL_FreeSurface(newSurface);
+
+            offX += symW;
+            if (offX >= srcW)
+            {
+                offX = 0;
+                offY += symH;
+            }
         }
+        SDL_FreeSurface(surface);
+    }
+
+    SDL_Surface *getPartOfSurfaceAsNewSurface(SDL_Surface *surface, int symW, int symH, int offX, int offY, int srcW, int srcH)
+    {
+        SDL_Surface *newSurface = SDL_CreateRGBSurfaceWithFormat(0, symW, symH, 32, SDL_PIXELFORMAT_RGBA32);
 
         Uint32 p32, *buf32;
         Uint8 r, g, b, a;
-        
-        for (int y = 0; y < surface->h; y++)
+
+        for (int y = 0; y < symH; y++)
         {
-            for (int x = 0; x < surface->w; x++)
+            for (int x = 0; x < symW; x++)
             {
                 buf32 = (Uint32 *)surface->pixels;
-                p32 = buf32[y * surface->w + x];
+                p32 = buf32[(offY + y) * srcW + (offX + x)];
 
                 SDL_GetRGBA(p32, surface->format, &r, &g, &b, &a);
 
@@ -97,20 +131,7 @@ public:
             }
         }
 
-        GLuint textureID;
-        glGenTextures(1, &textureID);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, newSurface->w, newSurface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, newSurface->pixels);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        SDL_FreeSurface(newSurface);
-        SDL_FreeSurface(surface);
-
-        return textureID;
+        return newSurface;
     }
 
     void WaitFrame(int fps)
@@ -185,37 +206,78 @@ public:
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
-        renderText("Test");
+         renderText("T35T1N9", 100, 180);
+
+        renderText("Rendering text in OpenGL", 10, 130);
+        renderText("123 @#$ asdf ASDF ?!*&%", 10, 100);
+        renderText("Hello World! :-)", 10, 70);
+
+        int someScore = 21;
+        char *myString = myIntToStr(someScore);
+
+        renderText("Score: ", 10, 40);
+        renderText(myString, 84, 40);
 
         SDL_GL_SwapWindow(window);
     }
 
-    void renderText(const char *text)
+    char *myIntToStr(int num)
+    {
+        // not ideal but works
+        int digts = 1;
+        int tmp = num;
+        while (tmp /= 10)
+        {
+            digts++;
+        }
+        char *str = new char[digts + 1];
+        for (int i = digts - 1; i >= 0; i--)
+        {
+            int digit = num % 10;
+            str[i] = digit + '0';
+            num /= 10;
+        }
+        str[digts] = '\0';
+        return str;
+    }
+
+    void renderText(const char *str, int posX, int posY)
+    {
+        while (*str != '\0')
+        {
+            int asciiCode = static_cast<int>(*str);
+            renderTextureBlock(fontTextures[asciiCode - 32], posX, posY, 12, 16);
+            posX += 12;
+            ++str;
+        }
+    }
+
+    void renderTextureBlock(GLuint texture, float x, float y, float textureWidth, float textureHeight)
     {
         glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, fontTexture);
+        glBindTexture(GL_TEXTURE_2D, texture);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         glBegin(GL_TRIANGLES);
         glTexCoord2f(0, 1);
-        glVertex2f(100, 100);
+        glVertex2f(x, y);
 
         glTexCoord2f(1, 1);
-        glVertex2f(292, 100);
+        glVertex2f(x + textureWidth, y);
 
         glTexCoord2f(1, 0);
-        glVertex2f(292, 196);
+        glVertex2f(x + textureWidth, y + textureHeight);
 
         glTexCoord2f(1, 0);
-        glVertex2f(292, 196);
+        glVertex2f(x + textureWidth, y + textureHeight);
 
         glTexCoord2f(0, 0);
-        glVertex2f(100, 196);
+        glVertex2f(x, y + textureHeight);
 
         glTexCoord2f(0, 1);
-        glVertex2f(100, 100);
+        glVertex2f(x, y);
         glEnd();
 
         glDisable(GL_BLEND);
