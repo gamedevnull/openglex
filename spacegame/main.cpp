@@ -1,6 +1,7 @@
 #include <iostream>
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
+#include "include/font.hpp"
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
@@ -43,11 +44,14 @@ public:
     GameObject *bullet;
     std::vector<GameObject *> targets;
 
+    FontRenderer *fontRenderer;
+
     int score;
+    int level;
 
     SpaceGame()
     {
-        isDebug = 1;
+        isDebug = 0;
         isRunning = 0;
 
         window = nullptr;
@@ -55,7 +59,7 @@ public:
 
         ship = new GameObject(1);
         ship->posX = 400.0f;
-        ship->posY = 300.0f;
+        ship->posY = 100.0f;
         ship->angle = 0.0f;
         ship->velX = 0.0f;
         ship->velY = 0.0f;
@@ -69,6 +73,9 @@ public:
         spawnAsteroid();
 
         score = 0;
+        level = 1;
+
+        fontRenderer = new FontRenderer();
     }
 
     void spawnAsteroid()
@@ -87,23 +94,27 @@ public:
     {
         int currentAsteroidsCount = targets.size();
         int maxAsteroidsCount = 1;
-        if (score <= 2)
+        if (score <= 3)
         {
             maxAsteroidsCount = 1;
+            level = 1;
         }
-        else if (score > 2 and score <= 4)
+        else if (score > 3 and score <= 6)
         {
             maxAsteroidsCount = 2;
+            level = 2;
         }
-        else if (score > 4 and score <= 6)
+        else if (score > 6 and score <= 10)
         {
             maxAsteroidsCount = 4;
+            level = 3;
         }
-        else
+        else if (score > 10)
         {
             maxAsteroidsCount = 6;
+            level = 4;
         }
-        std::cout << "spawning" << maxAsteroidsCount << std::endl;
+
         for (int i = currentAsteroidsCount; i < maxAsteroidsCount; i++)
         {
             spawnAsteroid();
@@ -139,6 +150,8 @@ public:
             SDL_Quit();
             return;
         }
+
+        fontRenderer->createPrintableAsciiCharsTexturesFromPng("pixfont.png", 12, 16, 192, 96);
 
         isRunning = 1;
         while (isRunning)
@@ -489,7 +502,34 @@ public:
 
         renderAsteroids();
 
+        renderScore();
+        renderLevel();
+
         SDL_GL_SwapWindow(window);
+    }
+
+    void renderScore()
+    {
+        glPushMatrix();
+        glTranslatef(0, 0, 0.0f);
+        glColor3f(0.0f, 1.0f, 0.0f);
+
+        fontRenderer->renderText("Score: ", 330, 540);
+        fontRenderer->renderInt(score, 410, 540);
+
+        glPopMatrix();
+    }
+
+    void renderLevel()
+    {
+        glPushMatrix();
+        glTranslatef(0, 0, 0.0f);
+        glColor3f(0.0f, 1.0f, 0.0f);
+
+        fontRenderer->renderText("Level: ", 630, 540);
+        fontRenderer->renderInt(level, 710, 540);
+
+        glPopMatrix();
     }
 
     void renderBullet()
@@ -515,7 +555,6 @@ public:
 
     void renderAsteroids()
     {
-
         for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
         {
             if ((*it)->status)
