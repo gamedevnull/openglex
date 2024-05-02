@@ -11,9 +11,9 @@ public:
 
     FontRenderer();
 
-    void createPrintableAsciiCharsTexturesFromPng(const char *filename, int symW, int symH, int srcW, int srcH);
+    void createPrintableAsciiCharsTexturesFromPng(const char *filename, int symW, int symH);
 
-    SDL_Surface *getPartOfSurfaceAsNewSurface(SDL_Surface *surface, int symW, int symH, int offX, int offY, int srcW, int srcH);
+    SDL_Surface *getPartOfSurfaceAsNewSurface(SDL_Surface *surface, int symW, int symH, int offX, int offY);
 
     GLuint createTextureFromSurface(SDL_Surface *surface);
 

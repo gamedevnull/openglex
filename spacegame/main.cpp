@@ -151,7 +151,7 @@ public:
             return;
         }
 
-        fontRenderer->createPrintableAsciiCharsTexturesFromPng("pixfont.png", 12, 16, 192, 96);
+        fontRenderer->createPrintableAsciiCharsTexturesFromPng("pixfont.png", 12, 16);
 
         isRunning = 1;
         while (isRunning)

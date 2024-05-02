@@ -5,7 +5,7 @@ FontRenderer::FontRenderer()
 {
 }
 
-void FontRenderer::createPrintableAsciiCharsTexturesFromPng(const char *filename, int symW, int symH, int srcW, int srcH)
+void FontRenderer::createPrintableAsciiCharsTexturesFromPng(const char *filename, int symW, int symH)
     {
         SDL_Surface *surface = IMG_Load(filename);
 
@@ -15,10 +15,12 @@ void FontRenderer::createPrintableAsciiCharsTexturesFromPng(const char *filename
         SDL_Surface *newSurface;
         newSurface = nullptr;
 
+        int srcW = surface->w;
+      
         GLuint textureID = 0;
         for (int i = 0; i < 95; ++i)
         {
-            newSurface = getPartOfSurfaceAsNewSurface(surface, symW, symH, offX, offY, srcW, srcH);
+            newSurface = getPartOfSurfaceAsNewSurface(surface, symW, symH, offX, offY);
             textureID = createTextureFromSurface(newSurface);
             fontTextures[i] = textureID;
             SDL_FreeSurface(newSurface);
@@ -33,13 +35,15 @@ void FontRenderer::createPrintableAsciiCharsTexturesFromPng(const char *filename
         SDL_FreeSurface(surface);
     }
 
-SDL_Surface *FontRenderer::getPartOfSurfaceAsNewSurface(SDL_Surface *surface, int symW, int symH, int offX, int offY, int srcW, int srcH)
+SDL_Surface *FontRenderer::getPartOfSurfaceAsNewSurface(SDL_Surface *surface, int symW, int symH, int offX, int offY)
     {
         SDL_Surface *newSurface = SDL_CreateRGBSurfaceWithFormat(0, symW, symH, 32, SDL_PIXELFORMAT_RGBA32);
 
         Uint32 p32, *buf32;
         Uint8 r, g, b, a;
 
+        int srcW = surface->w;
+        
         for (int y = 0; y < symH; y++)
         {
             for (int x = 0; x < symW; x++)
