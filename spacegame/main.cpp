@@ -6,6 +6,27 @@
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
 
+
+class GameState
+{
+public:
+    int currentState;
+    GameState()
+    {
+        currentState = 0;
+    }
+    
+    void setState(int newState)
+    {
+        currentState = newState;
+    }
+
+    bool isInState(int stateToCheck)
+    {
+        return stateToCheck == currentState;
+    }
+};
+
 class GameInput
 {
 public:
@@ -36,6 +57,13 @@ public:
     bool isRunning, isDebug;
 
     GameInput input;
+    GameState stateController;
+
+    enum GameStateID {
+        TITLE,
+        PLAYING,
+        GAME_OVER
+    };
 
     SDL_Window *window;
     SDL_GLContext context;
@@ -64,6 +92,7 @@ public:
         ship->velX = 0.0f;
         ship->velY = 0.0f;
         ship->mass = 1.0f;
+        ship->status = 1;
         ship->throttle = 0;
         ship->rotationThrottle = 0;
 
@@ -76,6 +105,8 @@ public:
         level = 1;
 
         fontRenderer = new FontRenderer();
+
+        stateController.setState(PLAYING);
     }
 
     void spawnAsteroid()
@@ -258,6 +289,9 @@ public:
 
     void Update()
     {
+
+        if (stateController.isInState(PLAYING)) {
+
         static const float forceFactor = 0.02f;
         static const float maxMainThrottle = 5.0f;
         static const float maxRotationThrottle = 3.0f;
@@ -459,6 +493,27 @@ public:
             }
         }
 
+        if (ship->status)
+        {
+            for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+            {
+                if ((*it)->status)
+                {
+                    if ((ship->posX < (*it)->posX + 20.0f) &&
+                        (ship->posX > (*it)->posX - 20.0f) &&
+                        (ship->posY < (*it)->posY + 20.0f) &&
+                        (ship->posY > (*it)->posY - 20.0f))
+                    {
+                        ship->status = 0;
+                        (*it)->status = 0;
+                    
+                        debugMsg("game over!");
+                        stateController.setState(GAME_OVER);
+                    }
+                }
+            }
+        }
+
         for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
         {
             if (!(*it)->status)
@@ -469,6 +524,29 @@ public:
                 break;
             }
         }
+
+         } else if (stateController.isInState(GAME_OVER)) {
+
+            if (input.keySpace)
+            {
+                stateController.setState(PLAYING);
+                input.keySpace = 0;
+                ship->status = 1;
+                score = 0;
+                level = 1;
+                ship->posX = 400.0f;
+                ship->posY = 100.0f;
+                ship->angle = 0.0f;
+                ship->velX = 0.0f;
+                ship->velY = 0.0f;
+                ship->mass = 1.0f;
+                ship->status = 1;
+                ship->throttle = 0;
+                ship->rotationThrottle = 0;
+            }
+            
+        } 
+
     }
 
     void shotBullet()
@@ -496,6 +574,8 @@ public:
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
+        if (stateController.isInState(PLAYING)) {
+
         renderBullet();
 
         renderShip();
@@ -505,7 +585,24 @@ public:
         renderScore();
         renderLevel();
 
+        } else if (stateController.isInState(GAME_OVER)) {
+
+            renderCentredText("GAME OVER");
+
+        } 
+
         SDL_GL_SwapWindow(window);
+    }
+
+    void renderCentredText(const char *text)
+    {
+        glPushMatrix();
+        glTranslatef(0, 0, 0.0f);
+        glColor3f(0.0f, 1.0f, 0.0f);
+
+        fontRenderer->renderText(text, 330, 240);
+       
+        glPopMatrix();
     }
 
     void renderScore()
