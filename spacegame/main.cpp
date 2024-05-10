@@ -6,7 +6,6 @@
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
 
-
 class GameState
 {
 public:
@@ -15,7 +14,7 @@ public:
     {
         currentState = 0;
     }
-    
+
     void setState(int newState)
     {
         currentState = newState;
@@ -43,6 +42,7 @@ public:
     float forX, forY;
     float throttle, rotationThrottle;
     float mass;
+    float size;
     char status;
     char ObjectId;
     GameObject(char id)
@@ -59,7 +59,8 @@ public:
     GameInput input;
     GameState stateController;
 
-    enum GameStateID {
+    enum GameStateID
+    {
         TITLE,
         PLAYING,
         GAME_OVER
@@ -77,10 +78,15 @@ public:
     int score;
     int level;
 
+    bool allowScreenBounce;
+
     SpaceGame()
     {
+        srand(time(0));
+
         isDebug = 0;
         isRunning = 0;
+        allowScreenBounce = 0;
 
         window = nullptr;
         context = nullptr;
@@ -92,6 +98,7 @@ public:
         ship->velX = 0.0f;
         ship->velY = 0.0f;
         ship->mass = 1.0f;
+        ship->size = 20.0f;
         ship->status = 1;
         ship->throttle = 0;
         ship->rotationThrottle = 0;
@@ -115,9 +122,31 @@ public:
         asteroid = new GameObject(3);
         asteroid->status = 1;
         asteroid->posX = (float)(rand() % 800);
-        asteroid->posY = (float)(rand() % 600);
+        asteroid->posY = -1 * (float)(rand() % 600);
         asteroid->velX = ((float)(rand() % 300)) / 100.0f;
         asteroid->velY = ((float)(rand() % 300)) / 100.0f;
+
+        int size = rand() % 5;
+        switch (size)
+        {
+        case 0:
+            asteroid->size = 10;
+            break;
+        case 1:
+            asteroid->size = 15;
+            break;
+        case 2:
+            asteroid->size = 20;
+            break;
+        case 3:
+            asteroid->size = 25;
+            break;
+        case 4:
+            asteroid->size = 30;
+            break;
+        default:
+            break;
+        }
         targets.push_back(asteroid);
     }
 
@@ -240,7 +269,7 @@ public:
                     input.keySpace = 1;
                     break;
                 default:
-                    std::cout << "SDL_KEYDOWN for : " << event.key.keysym.sym << std::endl;
+                    // std::cout << "SDL_KEYDOWN for : " << event.key.keysym.sym << std::endl;
                     break;
                 }
                 break;
@@ -267,7 +296,7 @@ public:
                     input.keySpace = 0;
                     break;
                 default:
-                    std::cout << "SDL_KEYUP for : " << event.key.keysym.sym << std::endl;
+                    // std::cout << "SDL_KEYUP for : " << event.key.keysym.sym << std::endl;
                     break;
                 }
                 break;
@@ -290,242 +319,300 @@ public:
     void Update()
     {
 
-        if (stateController.isInState(PLAYING)) {
-
-        static const float forceFactor = 0.02f;
-        static const float maxMainThrottle = 5.0f;
-        static const float maxRotationThrottle = 3.0f;
-
-        ship->forX = 0;
-        ship->forY = 0;
-
-        // move forward
-
-        if (input.keyUp)
+        if (stateController.isInState(PLAYING))
         {
-            debugMsg("Up");
 
-            if (ship->throttle < maxMainThrottle)
+            static const float forceFactor = 0.02f;
+            static const float maxMainThrottle = 5.0f;
+            static const float maxRotationThrottle = 3.0f;
+
+            ship->forX = 0;
+            ship->forY = 0;
+
+            // move forward
+
+            if (input.keyUp)
             {
-                ship->throttle += 0.5;
-            }
+                debugMsg("Up");
 
-            ship->forX += ship->throttle * cos(deg2rad(ship->angle));
-            ship->forY += ship->throttle * sin(deg2rad(ship->angle));
-        }
-
-        // change angle
-
-        if (input.keyLeft)
-        {
-            debugMsg("Left");
-
-            if (ship->rotationThrottle < maxRotationThrottle)
-            {
-                ship->rotationThrottle += 0.05;
-            }
-
-            ship->angle += ship->rotationThrottle;
-        }
-        else if (input.keyRight)
-        {
-            debugMsg("Right");
-
-            if (ship->rotationThrottle < maxRotationThrottle)
-            {
-                ship->rotationThrottle += 0.05;
-            }
-
-            ship->angle -= ship->rotationThrottle;
-        }
-        else
-        {
-            if (ship->throttle > 0)
-            {
-                ship->throttle -= 0.2;
-                if (ship->throttle < 0)
+                if (ship->throttle < maxMainThrottle)
                 {
-                    ship->throttle = 0;
+                    ship->throttle += 0.5;
+                }
+
+                ship->forX += ship->throttle * cos(deg2rad(ship->angle));
+                ship->forY += ship->throttle * sin(deg2rad(ship->angle));
+            }
+
+            // change angle
+
+            if (input.keyLeft)
+            {
+                debugMsg("Left");
+
+                if (ship->rotationThrottle < maxRotationThrottle)
+                {
+                    ship->rotationThrottle += 0.05;
+                }
+
+                ship->angle += ship->rotationThrottle;
+            }
+            else if (input.keyRight)
+            {
+                debugMsg("Right");
+
+                if (ship->rotationThrottle < maxRotationThrottle)
+                {
+                    ship->rotationThrottle += 0.05;
+                }
+
+                ship->angle -= ship->rotationThrottle;
+            }
+            else
+            {
+                if (ship->throttle > 0)
+                {
+                    ship->throttle -= 0.2;
+                    if (ship->throttle < 0)
+                    {
+                        ship->throttle = 0;
+                    }
+                }
+
+                if (ship->rotationThrottle > 0)
+                {
+                    ship->rotationThrottle -= 0.1;
+                    if (ship->rotationThrottle < 0)
+                    {
+                        ship->rotationThrottle = 0;
+                    }
                 }
             }
 
-            if (ship->rotationThrottle > 0)
+            ship->velX += ship->forX * forceFactor / ship->mass;
+
+            if (ship->velX > 3)
             {
-                ship->rotationThrottle -= 0.1;
-                if (ship->rotationThrottle < 0)
-                {
-                    ship->rotationThrottle = 0;
-                }
+                ship->velX = 3;
             }
-        }
-
-        ship->velX += ship->forX * forceFactor / ship->mass;
-
-        if (ship->velX > 3)
-        {
-            ship->velX = 3;
-        }
-        else if (ship->velX < -3)
-        {
-            ship->velX = -3;
-        }
-
-        ship->velY += ship->forY * forceFactor / ship->mass;
-
-        if (ship->velY > 3)
-        {
-            ship->velY = 3;
-        }
-        else if (ship->velY < -3)
-        {
-            ship->velY = -3;
-        }
-
-        ship->posX += ship->velX;
-        ship->posY += ship->velY;
-
-        // shot
-
-        if (input.keySpace)
-        {
-            shotBullet();
-            input.keySpace = 0;
-        }
-
-        // move bullet
-
-        if (bullet->status)
-        {
-            bullet->posX += bullet->velX;
-            bullet->posY += bullet->velY;
-        }
-
-        // move targets
-
-        for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
-        {
-            if ((*it)->status)
+            else if (ship->velX < -3)
             {
-                (*it)->posX += (*it)->velX;
-                (*it)->posY += (*it)->velY;
+                ship->velX = -3;
             }
-        }
 
-        // bullet out of screen
+            ship->velY += ship->forY * forceFactor / ship->mass;
 
-        if ((bullet->posX > 800.0f) ||
-            (bullet->posX < 0.0f) ||
-            (bullet->posY > 600.0f) ||
-            (bullet->posY < 0.0f))
-        {
-            bullet->status = 0;
-        }
-
-        // ship out of screen
-
-        if (ship->posX > 780.0f)
-        {
-            ship->posX += 2 * (780.0f - ship->posX);
-            ship->velX = -ship->velX;
-        }
-        if (ship->posX < 20.0f)
-        {
-            ship->posX += 2 * (20.0f - ship->posX);
-            ship->velX = -ship->velX;
-        }
-        if (ship->posY > 580.0f)
-        {
-            ship->posY += 2 * (580.0f - ship->posY);
-            ship->velY = -ship->velY;
-        }
-        if (ship->posY < 20.0f)
-        {
-            ship->posY += 2 * (20.0f - ship->posY);
-            ship->velY = -ship->velY;
-        }
-
-        // targets out of screen
-
-        for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
-        {
-            if ((*it)->status)
+            if (ship->velY > 3)
             {
-                if ((*it)->posX > 780.0f)
-                {
-                    (*it)->posX += 2 * (780.0f - (*it)->posX);
-                    (*it)->velX = -(*it)->velX;
-                }
-                if ((*it)->posX < 20.0f)
-                {
-                    (*it)->posX += 2 * (20.0f - (*it)->posX);
-                    (*it)->velX = -(*it)->velX;
-                }
-                if ((*it)->posY > 580.0f)
-                {
-                    (*it)->posY += 2 * (580.0f - (*it)->posY);
-                    (*it)->velY = -(*it)->velY;
-                }
-                if ((*it)->posY < 20.0f)
-                {
-                    (*it)->posY += 2 * (20.0f - (*it)->posY);
-                    (*it)->velY = -(*it)->velY;
-                }
+                ship->velY = 3;
             }
-        }
+            else if (ship->velY < -3)
+            {
+                ship->velY = -3;
+            }
 
-        if (bullet->status)
-        {
+            ship->posX += ship->velX;
+            ship->posY += ship->velY;
+
+            // shot
+
+            if (input.keySpace)
+            {
+                shotBullet();
+                input.keySpace = 0;
+            }
+
+            // move bullet
+
+            if (bullet->status)
+            {
+                bullet->posX += bullet->velX;
+                bullet->posY += bullet->velY;
+            }
+
+            // move targets
+
             for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
             {
                 if ((*it)->status)
                 {
-                    if ((bullet->posX < (*it)->posX + 20.0f) &&
-                        (bullet->posX > (*it)->posX - 20.0f) &&
-                        (bullet->posY < (*it)->posY + 20.0f) &&
-                        (bullet->posY > (*it)->posY - 20.0f))
+                    (*it)->posX += (*it)->velX;
+                    (*it)->posY += (*it)->velY;
+                }
+            }
+
+            // bullet out of screen
+
+            if ((bullet->posX > 800.0f) ||
+                (bullet->posX < 0.0f) ||
+                (bullet->posY > 600.0f) ||
+                (bullet->posY < 0.0f))
+            {
+                bullet->status = 0;
+            }
+
+            // ship out of screen
+
+            if (allowScreenBounce)
+            {
+
+                if (ship->posX > 780.0f)
+                {
+                    ship->posX += 2 * (780.0f - ship->posX);
+                    ship->velX = -ship->velX;
+                }
+                if (ship->posX < 20.0f)
+                {
+                    ship->posX += 2 * (20.0f - ship->posX);
+                    ship->velX = -ship->velX;
+                }
+                if (ship->posY > 580.0f)
+                {
+                    ship->posY += 2 * (580.0f - ship->posY);
+                    ship->velY = -ship->velY;
+                }
+                if (ship->posY < 20.0f)
+                {
+                    ship->posY += 2 * (20.0f - ship->posY);
+                    ship->velY = -ship->velY;
+                }
+            }
+            else
+            {
+
+                if (ship->posX > 800.0f)
+                {
+                    ship->posX = 0;
+                }
+                if (ship->posX < 0.0f)
+                {
+                    ship->posX = 800;
+                }
+                if (ship->posY > 600.0f)
+                {
+                    ship->posY = 0;
+                }
+                if (ship->posY < 0.0f)
+                {
+                    ship->posY = 600.0f;
+                }
+            }
+
+            // targets out of screen
+
+            if (allowScreenBounce)
+            {
+                for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+                {
+                    if ((*it)->status)
                     {
-                        bullet->status = 0;
-                        (*it)->status = 0;
-                        score++;
-                        debugMsg("score!");
+                        if ((*it)->posX > 780.0f)
+                        {
+                            (*it)->posX += 2 * (780.0f - (*it)->posX);
+                            (*it)->velX = -(*it)->velX;
+                        }
+                        if ((*it)->posX < 20.0f)
+                        {
+                            (*it)->posX += 2 * (20.0f - (*it)->posX);
+                            (*it)->velX = -(*it)->velX;
+                        }
+                        if ((*it)->posY > 580.0f)
+                        {
+                            (*it)->posY += 2 * (580.0f - (*it)->posY);
+                            (*it)->velY = -(*it)->velY;
+                        }
+                        if ((*it)->posY < 20.0f)
+                        {
+                            (*it)->posY += 2 * (20.0f - (*it)->posY);
+                            (*it)->velY = -(*it)->velY;
+                        }
                     }
                 }
             }
-        }
+            else
+            {
+                for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+                {
+                    if ((*it)->status)
+                    {
+                        if ((*it)->posX > 800.0f)
+                        {
+                            (*it)->posX = 0;
+                        }
+                        if ((*it)->posX < 0.0f)
+                        {
+                            (*it)->posX = 800;
+                        }
+                        if ((*it)->posY > 600.0f)
+                        {
+                            (*it)->posY = 0;
+                        }
+                        if ((*it)->posY < 0.0f)
+                        {
+                            (*it)->posY = 800;
+                        }
+                    }
+                }
+            }
 
-        if (ship->status)
-        {
+            // bullet vs asteroid
+
+            if (bullet->status)
+            {
+                for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+                {
+                    if ((*it)->status)
+                    {
+                        if ((bullet->posX + bullet->size >= (*it)->posX - (*it)->size) &&
+                            (bullet->posX - bullet->size <= (*it)->posX + (*it)->size) &&
+                            (bullet->posY + bullet->size >= (*it)->posY - (*it)->size) &&
+                            (bullet->posY - bullet->size <= (*it)->posY + (*it)->size))
+                        {
+                            bullet->status = 0;
+                            (*it)->status = 0;
+                            score++;
+                            debugMsg("score!");
+                        }
+                    }
+                }
+            }
+
+            // ship vs asteroid
+
+            if (ship->status)
+            {
+                for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+                {
+                    if ((*it)->status)
+                    {
+                        if ((ship->posX + ship->size >= (*it)->posX - (*it)->size) &&
+                            (ship->posX - ship->size <= (*it)->posX + (*it)->size) &&
+                            (ship->posY + ship->size >= (*it)->posY - (*it)->size) &&
+                            (ship->posY - ship->size <= (*it)->posY + (*it)->size))
+                        {
+                            ship->status = 0;
+                            (*it)->status = 0;
+
+                            debugMsg("game over!");
+                            stateController.setState(GAME_OVER);
+                        }
+                    }
+                }
+            }
+
             for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
             {
-                if ((*it)->status)
+                if (!(*it)->status)
                 {
-                    if ((ship->posX < (*it)->posX + 20.0f) &&
-                        (ship->posX > (*it)->posX - 20.0f) &&
-                        (ship->posY < (*it)->posY + 20.0f) &&
-                        (ship->posY > (*it)->posY - 20.0f))
-                    {
-                        ship->status = 0;
-                        (*it)->status = 0;
-                    
-                        debugMsg("game over!");
-                        stateController.setState(GAME_OVER);
-                    }
+                    delete *it;
+                    targets.erase(it);
+                    spawnMoreAsteroids();
+                    break;
                 }
             }
         }
-
-        for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+        else if (stateController.isInState(GAME_OVER))
         {
-            if (!(*it)->status)
-            {
-                delete *it;
-                targets.erase(it);
-                spawnMoreAsteroids();
-                break;
-            }
-        }
-
-         } else if (stateController.isInState(GAME_OVER)) {
 
             if (input.keySpace)
             {
@@ -544,9 +631,7 @@ public:
                 ship->throttle = 0;
                 ship->rotationThrottle = 0;
             }
-            
-        } 
-
+        }
     }
 
     void shotBullet()
@@ -574,22 +659,23 @@ public:
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
-        if (stateController.isInState(PLAYING)) {
+        if (stateController.isInState(PLAYING))
+        {
 
-        renderBullet();
+            renderBullet();
 
-        renderShip();
+            renderShip();
 
-        renderAsteroids();
+            renderAsteroids();
 
-        renderScore();
-        renderLevel();
-
-        } else if (stateController.isInState(GAME_OVER)) {
+            renderScore();
+            renderLevel();
+        }
+        else if (stateController.isInState(GAME_OVER))
+        {
 
             renderCentredText("GAME OVER");
-
-        } 
+        }
 
         SDL_GL_SwapWindow(window);
     }
@@ -601,7 +687,7 @@ public:
         glColor3f(0.0f, 1.0f, 0.0f);
 
         fontRenderer->renderText(text, 330, 240);
-       
+
         glPopMatrix();
     }
 
@@ -662,7 +748,7 @@ public:
                 glRotatef((*it)->angle, 0.0f, 0.0f, 1.0f);
                 glColor3f(0.0f, 1.0f, 1.0f);
 
-                float rockSize = 12.0f;
+                float rockSize = (*it)->size;
 
                 glBegin(GL_TRIANGLE_STRIP);
                 {
@@ -701,7 +787,7 @@ public:
 
         glColor3f(1.0f, 1.0f, 1.0f);
 
-        float shipSize = 20.0f;
+        float shipSize = ship->size;
 
         glBegin(GL_TRIANGLE_STRIP);
         {
