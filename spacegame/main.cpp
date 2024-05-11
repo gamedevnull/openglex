@@ -79,6 +79,7 @@ public:
     int level;
 
     bool allowScreenBounce;
+    bool allowAsteroidExplode;
 
     SpaceGame()
     {
@@ -87,6 +88,7 @@ public:
         isDebug = 0;
         isRunning = 0;
         allowScreenBounce = 0;
+        allowAsteroidExplode = 1;
 
         window = nullptr;
         context = nullptr;
@@ -114,6 +116,19 @@ public:
         fontRenderer = new FontRenderer();
 
         stateController.setState(PLAYING);
+    }
+
+    void spawnAsteroidParticle(float posX, float posY)
+    {
+        GameObject *asteroid;
+        asteroid = new GameObject(4);
+        asteroid->status = 1;
+        asteroid->posX = posX;
+        asteroid->posY = posY;
+        asteroid->velX = (100 + (float)(rand() % 100)) / 100.0f;
+        asteroid->velY = (100 + (float)(rand() % 100)) / 100.0f;
+        asteroid->size = 5;
+        targets.push_back(asteroid);
     }
 
     void spawnAsteroid()
@@ -152,7 +167,16 @@ public:
 
     void spawnMoreAsteroids()
     {
-        int currentAsteroidsCount = targets.size();
+        int currentAsteroidsCount = 0;
+
+        for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+        {
+            if ((*it)->status && (*it)->ObjectId == 3)
+            {
+                currentAsteroidsCount++;
+            }
+        }
+
         int maxAsteroidsCount = 1;
         if (score <= 3)
         {
@@ -321,7 +345,6 @@ public:
 
         if (stateController.isInState(PLAYING))
         {
-
             static const float forceFactor = 0.02f;
             static const float maxMainThrottle = 5.0f;
             static const float maxRotationThrottle = 3.0f;
@@ -455,7 +478,6 @@ public:
 
             if (allowScreenBounce)
             {
-
                 if (ship->posX > 780.0f)
                 {
                     ship->posX += 2 * (780.0f - ship->posX);
@@ -479,7 +501,6 @@ public:
             }
             else
             {
-
                 if (ship->posX > 800.0f)
                 {
                     ship->posX = 0;
@@ -508,23 +529,51 @@ public:
                     {
                         if ((*it)->posX > 780.0f)
                         {
-                            (*it)->posX += 2 * (780.0f - (*it)->posX);
-                            (*it)->velX = -(*it)->velX;
+                            if ((*it)->ObjectId == 4)
+                            {
+                                (*it)->status = 0;
+                            }
+                            else
+                            {
+                                (*it)->posX += 2 * (780.0f - (*it)->posX);
+                                (*it)->velX = -(*it)->velX;
+                            }
                         }
                         if ((*it)->posX < 20.0f)
                         {
-                            (*it)->posX += 2 * (20.0f - (*it)->posX);
-                            (*it)->velX = -(*it)->velX;
+                            if ((*it)->ObjectId == 4)
+                            {
+                                (*it)->status = 0;
+                            }
+                            else
+                            {
+                                (*it)->posX += 2 * (20.0f - (*it)->posX);
+                                (*it)->velX = -(*it)->velX;
+                            }
                         }
                         if ((*it)->posY > 580.0f)
                         {
-                            (*it)->posY += 2 * (580.0f - (*it)->posY);
-                            (*it)->velY = -(*it)->velY;
+                            if ((*it)->ObjectId == 4)
+                            {
+                                (*it)->status = 0;
+                            }
+                            else
+                            {
+                                (*it)->posY += 2 * (580.0f - (*it)->posY);
+                                (*it)->velY = -(*it)->velY;
+                            }
                         }
                         if ((*it)->posY < 20.0f)
                         {
-                            (*it)->posY += 2 * (20.0f - (*it)->posY);
-                            (*it)->velY = -(*it)->velY;
+                            if ((*it)->ObjectId == 4)
+                            {
+                                (*it)->status = 0;
+                            }
+                            else
+                            {
+                                (*it)->posY += 2 * (20.0f - (*it)->posY);
+                                (*it)->velY = -(*it)->velY;
+                            }
                         }
                     }
                 }
@@ -537,18 +586,34 @@ public:
                     {
                         if ((*it)->posX > 800.0f)
                         {
+                            if ((*it)->ObjectId == 4)
+                            {
+                                (*it)->status = 0;
+                            }
                             (*it)->posX = 0;
                         }
                         if ((*it)->posX < 0.0f)
                         {
+                            if ((*it)->ObjectId == 4)
+                            {
+                                (*it)->status = 0;
+                            }
                             (*it)->posX = 800;
                         }
                         if ((*it)->posY > 600.0f)
                         {
+                            if ((*it)->ObjectId == 4)
+                            {
+                                (*it)->status = 0;
+                            }
                             (*it)->posY = 0;
                         }
                         if ((*it)->posY < 0.0f)
                         {
+                            if ((*it)->ObjectId == 4)
+                            {
+                                (*it)->status = 0;
+                            }
                             (*it)->posY = 800;
                         }
                     }
@@ -556,6 +621,9 @@ public:
             }
 
             // bullet vs asteroid
+
+            int particlesNum = 0;
+            float pX, pY;
 
             if (bullet->status)
             {
@@ -568,12 +636,25 @@ public:
                             (bullet->posY + bullet->size >= (*it)->posY - (*it)->size) &&
                             (bullet->posY - bullet->size <= (*it)->posY + (*it)->size))
                         {
-                            bullet->status = 0;
-                            (*it)->status = 0;
                             score++;
                             debugMsg("score!");
+
+                            bullet->status = 0;
+                            (*it)->status = 0;
+
+                            particlesNum = 2 + rand() % 3;
+                            pX = (*it)->posX;
+                            pY = (*it)->posY;
                         }
                     }
+                }
+            }
+
+            if (allowAsteroidExplode)
+            {
+                for (int i = 0; i < particlesNum; i++)
+                {
+                    spawnAsteroidParticle(pX, pY);
                 }
             }
 
@@ -592,7 +673,6 @@ public:
                         {
                             ship->status = 0;
                             (*it)->status = 0;
-
                             debugMsg("game over!");
                             stateController.setState(GAME_OVER);
                         }
@@ -641,7 +721,6 @@ public:
             bullet->status = 1;
             bullet->posX = ship->posX;
             bullet->posY = ship->posY;
-
             bullet->velX = 10.0f * cos(deg2rad(ship->angle));
             bullet->velY = 10.0f * sin(deg2rad(ship->angle));
         }
@@ -661,13 +740,9 @@ public:
 
         if (stateController.isInState(PLAYING))
         {
-
             renderBullet();
-
             renderShip();
-
             renderAsteroids();
-
             renderScore();
             renderLevel();
         }
