@@ -77,6 +77,7 @@ public:
 
     int score;
     int level;
+    int shield;
 
     bool allowScreenBounce;
     bool allowAsteroidExplode;
@@ -95,7 +96,7 @@ public:
 
         ship = new GameObject(1);
         ship->posX = 400.0f;
-        ship->posY = 100.0f;
+        ship->posY = 300.0f;
         ship->angle = 0.0f;
         ship->velX = 0.0f;
         ship->velY = 0.0f;
@@ -112,6 +113,7 @@ public:
 
         score = 0;
         level = 1;
+        shield = 3;
 
         fontRenderer = new FontRenderer();
 
@@ -125,8 +127,18 @@ public:
         asteroid->status = 1;
         asteroid->posX = posX;
         asteroid->posY = posY;
-        asteroid->velX = (100 + (float)(rand() % 100)) / 100.0f;
-        asteroid->velY = (100 + (float)(rand() % 100)) / 100.0f;
+        int mlt = 1;
+        if (rand() % 2)
+        {
+            mlt = -1;
+        }
+        asteroid->velX = mlt * (100 + (float)(rand() % 100)) / 100.0f;
+        mlt = 1;
+        if (rand() % 2)
+        {
+            mlt = -1;
+        }
+        asteroid->velY = mlt * (100 + (float)(rand() % 100)) / 100.0f;
         asteroid->size = 5;
         targets.push_back(asteroid);
     }
@@ -136,33 +148,55 @@ public:
         GameObject *asteroid;
         asteroid = new GameObject(3);
         asteroid->status = 1;
-        asteroid->posX = (float)(rand() % 800);
-        asteroid->posY = -1 * (float)(rand() % 600);
-        asteroid->velX = ((float)(rand() % 300)) / 100.0f;
-        asteroid->velY = ((float)(rand() % 300)) / 100.0f;
-
-        int size = rand() % 5;
-        switch (size)
+        asteroid->size = getRandomAsteroidSize();
+        int dir = rand() % 4;
+        switch (dir)
         {
-        case 0:
-            asteroid->size = 10;
+        case 0: // top
+            asteroid->posX = (float)(rand() % 800);
+            asteroid->posY = 600 + asteroid->size;
+            asteroid->velX = ((float)(rand() % 300)) / 100.0f;
+            asteroid->velY = -1 * ((float)(rand() % 300)) / 100.0f;
             break;
-        case 1:
-            asteroid->size = 15;
+        case 1: // left
+            asteroid->posX = -1 * asteroid->size;
+            asteroid->posY = (float)(rand() % 600);
+            asteroid->velX = ((float)(rand() % 300)) / 100.0f;
+            asteroid->velY = ((float)(rand() % 300)) / 100.0f;
             break;
-        case 2:
-            asteroid->size = 20;
+        case 2: // right
+            asteroid->posX = 800 + asteroid->size;
+            asteroid->posY = (float)(rand() % 600);
+            asteroid->velX = -1 * ((float)(rand() % 300)) / 100.0f;
+            asteroid->velY = -1 * ((float)(rand() % 300)) / 100.0f;
             break;
-        case 3:
-            asteroid->size = 25;
-            break;
-        case 4:
-            asteroid->size = 30;
+        case 3: // bottom
+            asteroid->posX = (float)(rand() % 800);
+            asteroid->posY = -1 * asteroid->size;
+            asteroid->velX = ((float)(rand() % 300)) / 100.0f;
+            asteroid->velY = ((float)(rand() % 300)) / 100.0f;
             break;
         default:
             break;
         }
+
         targets.push_back(asteroid);
+    }
+
+    int getRandomAsteroidSize()
+    {
+        switch (rand() % 4)
+        {
+        case 0:
+            return 15;
+        case 1:
+            return 20;
+        case 2:
+            return 25;
+        case 3:
+            return 30;
+        }
+        return 35;
     }
 
     void spawnMoreAsteroids()
@@ -224,7 +258,7 @@ public:
         }
 
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
         context = SDL_GL_CreateContext(window);
         if (!context)
@@ -356,7 +390,7 @@ public:
 
             if (input.keyUp)
             {
-                debugMsg("Up");
+                // debugMsg("Up");
 
                 if (ship->throttle < maxMainThrottle)
                 {
@@ -371,7 +405,7 @@ public:
 
             if (input.keyLeft)
             {
-                debugMsg("Left");
+                // debugMsg("Left");
 
                 if (ship->rotationThrottle < maxRotationThrottle)
                 {
@@ -382,7 +416,7 @@ public:
             }
             else if (input.keyRight)
             {
-                debugMsg("Right");
+                // debugMsg("Right");
 
                 if (ship->rotationThrottle < maxRotationThrottle)
                 {
@@ -584,7 +618,7 @@ public:
                 {
                     if ((*it)->status)
                     {
-                        if ((*it)->posX > 800.0f)
+                        if ((*it)->posX > 800.0f && (*it)->velX > 0)
                         {
                             if ((*it)->ObjectId == 4)
                             {
@@ -592,7 +626,7 @@ public:
                             }
                             (*it)->posX = 0;
                         }
-                        if ((*it)->posX < 0.0f)
+                        if ((*it)->posX < (0.0f - (*it)->size) && (*it)->velX < 0)
                         {
                             if ((*it)->ObjectId == 4)
                             {
@@ -600,7 +634,7 @@ public:
                             }
                             (*it)->posX = 800;
                         }
-                        if ((*it)->posY > 600.0f)
+                        if ((*it)->posY > (600.0f - (*it)->size) && (*it)->velY > 0)
                         {
                             if ((*it)->ObjectId == 4)
                             {
@@ -608,13 +642,13 @@ public:
                             }
                             (*it)->posY = 0;
                         }
-                        if ((*it)->posY < 0.0f)
+                        if ((*it)->posY < (0.0f - (*it)->size) && (*it)->velY < 0)
                         {
                             if ((*it)->ObjectId == 4)
                             {
                                 (*it)->status = 0;
                             }
-                            (*it)->posY = 800;
+                            (*it)->posY = 600;
                         }
                     }
                 }
@@ -637,7 +671,6 @@ public:
                             (bullet->posY - bullet->size <= (*it)->posY + (*it)->size))
                         {
                             score++;
-                            debugMsg("score!");
 
                             bullet->status = 0;
                             (*it)->status = 0;
@@ -671,14 +704,29 @@ public:
                             (ship->posY + ship->size >= (*it)->posY - (*it)->size) &&
                             (ship->posY - ship->size <= (*it)->posY + (*it)->size))
                         {
-                            ship->status = 0;
+
                             (*it)->status = 0;
-                            debugMsg("game over!");
-                            stateController.setState(GAME_OVER);
+
+                            if ((*it)->size < 20)
+                            {
+                                shield--;
+                            }
+                            else
+                            {
+                                shield = 0;
+                            }
+
+                            if (shield == 0)
+                            {
+                                ship->status = 0;
+                                stateController.setState(GAME_OVER);
+                            }
                         }
                     }
                 }
             }
+
+           
 
             for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
             {
@@ -701,6 +749,7 @@ public:
                 ship->status = 1;
                 score = 0;
                 level = 1;
+                shield = 3;
                 ship->posX = 400.0f;
                 ship->posY = 100.0f;
                 ship->angle = 0.0f;
@@ -710,6 +759,11 @@ public:
                 ship->status = 1;
                 ship->throttle = 0;
                 ship->rotationThrottle = 0;
+
+                for (std::vector<GameObject *>::iterator it = targets.begin(); it != targets.end(); ++it)
+                {
+                   (*it)->status = 0; 
+                }
             }
         }
     }
@@ -743,6 +797,7 @@ public:
             renderBullet();
             renderShip();
             renderAsteroids();
+            renderShield();
             renderScore();
             renderLevel();
         }
@@ -762,6 +817,18 @@ public:
         glColor3f(0.0f, 1.0f, 0.0f);
 
         fontRenderer->renderText(text, 330, 240);
+
+        glPopMatrix();
+    }
+
+    void renderShield()
+    {
+        glPushMatrix();
+        glTranslatef(0, 0, 0.0f);
+        glColor3f(0.0f, 1.0f, 0.0f);
+
+        fontRenderer->renderText("Shield: ", 30, 540);
+        fontRenderer->renderInt(shield, 130, 540);
 
         glPopMatrix();
     }
